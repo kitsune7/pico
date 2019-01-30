@@ -1,6 +1,6 @@
 ruleset io.picolabs.twilio_v2 {
   meta {
-    provides send_sms, get_all_messages, get_messages
+    provides send_sms, messages
   }
  
   global {
@@ -14,19 +14,16 @@ ruleset io.picolabs.twilio_v2 {
         })
     }
     
-    get_all_messages = function () {
+    messages = function (to=null, from=null) {
       base_url = <<https://#{account_sid}:#{auth_token}@api.twilio.com/2010-04-01/Accounts/#{account_sid}/>>;
-      http:get(base_url + "Messages.json")["content"].decode()
-    }
-    
-    get_messages = function (to, from) {
-      base_url = <<https://#{account_sid}:#{auth_token}@api.twilio.com/2010-04-01/Accounts/#{account_sid}/>>;
-      http:get(base_url + "Messages.json",
-        qs = {
-          "From": from,
-          "To": to
-        }
-      )["content"].decode()
+      (to.isnull() && from .isnull()) =>
+        http:get(base_url + "Messages.json")["content"].decode()
+        | http:get(base_url + "Messages.json",
+          qs = {
+            "To": to,
+            "From": from
+          }
+        )["content"].decode()
     }
   }
 }

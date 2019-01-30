@@ -2,12 +2,13 @@ ruleset io.picolabs.use_twilio_v2 {
   meta {
     use module io.picolabs.lesson_keys
     use module io.picolabs.twilio_v2 alias twilio
-        with account_sid = keys:twilio{"account_sid"}
-             auth_token =  keys:twilio{"auth_token"}
+    with account_sid = keys:twilio{"account_sid"}
+      auth_token = keys:twilio{"auth_token"}
+    author "Christopher Bradshaw"
   }
  
-  rule test_send_sms {
-    select when test new_message
+  rule send_sms {
+    select when twilio send_sms
     twilio:send_sms(
       event:attr("to"),
       event:attr("from"),
@@ -15,10 +16,12 @@ ruleset io.picolabs.use_twilio_v2 {
     )
   }
   
-  rule test_full_message_list {
-    select when test full_message_list
+  rule messages {
+    select when twilio messages
     pre {
-      messages = twilio:get_all_messages()
+      to = event:attr("to").defaultsTo(null)
+      from = event:attr("from").defaultsTo(null)
+      messages = twilio:messages(to, from)
     }
     
     send_directive("response", messages)
