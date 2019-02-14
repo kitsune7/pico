@@ -1,15 +1,27 @@
 ruleset wovyn_base {
+  meta {
+    use module temperature_store alias TS
+  }
+  
   global {
-    temperature_threshold = 65.0
+    temperature_threshold = 75.0
     to = "+13852190238"
     from = "+16122686674"
+  }
+  
+  rule test_ent_vars {
+    select when wovyn test
+    send_directive("test", {
+      "temperatures": TS:temperatures(),
+      "threshold_violations": TS:threshold_violations(),
+      "inrange_temperatures": TS:inrange_temperatures()
+    })
   }
   
   rule process_heartbeat {
     select when wovyn heartbeat
     pre {
       genericThing = event:attr("genericThing")
-      never_used = event:attrs.klog("attrs")
     }
     if genericThing then
       send_directive("beat", {})
@@ -25,7 +37,6 @@ ruleset wovyn_base {
     select when wovyn new_temperature_reading
     pre {
       temperature = event:attr("temperature")
-      never_used = event:attrs.klog("attrs")
       violation = temperature[0]["temperatureF"] > temperature_threshold
     }
     send_directive("temp", {"temperature_violation": violation})
