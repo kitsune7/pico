@@ -1,20 +1,24 @@
 ruleset temperature_store {
   meta {
-    provides temperatures, threshold_violations, inrange_temperatures
-    shares temperatures, threshold_violations, inrange_temperatures
+    provides temperatures, current_temperature, threshold_violations, inrange_temperatures
+    shares temperatures, current_temperature, threshold_violations, inrange_temperatures
   }
   
   global {
     temperatures = function () {
-      ent:temperature_readings
+      ent:temperature_readings.reverse()
+    }
+    
+    current_temperature = function () {
+      ent:temperature_readings.reverse().head()
     }
     
     threshold_violations = function () {
-      ent:threshold_violations
+      ent:threshold_violations.reverse()
     }
     
     inrange_temperatures = function () {
-      ent:temperature_readings.difference(ent:threshold_violations)
+      ent:temperature_readings.difference(ent:threshold_violations).reverse()
     }
   }
   

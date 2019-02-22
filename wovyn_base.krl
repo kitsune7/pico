@@ -1,20 +1,33 @@
 ruleset wovyn_base {
   meta {
     use module temperature_store alias TS
+    use module sensor_profile alias Profile
   }
   
   global {
-    temperature_threshold = 75.0
-    to = "+13852190238"
+    to = Profile:get_sms_number()
     from = "+16122686674"
   }
   
-  rule test_ent_vars {
-    select when wovyn test
-    send_directive("test", {
+  rule current_temperature {
+    select when wovyn current_temperature
+    pre {
+      temperature_threshold = Profile:get_threshold()
+    }
+    send_directive("api", {
+      "current_temperature": TS:current_temperature(),
+      "temperature_threshold": temperature_threshold
+    })
+  }
+  
+  rule temperature_readings {
+    select when wovyn temperature_readings
+    pre {
+      temperature_threshold = Profile:get_threshold()
+    }
+    send_directive("api", {
       "temperatures": TS:temperatures(),
-      "threshold_violations": TS:threshold_violations(),
-      "inrange_temperatures": TS:inrange_temperatures()
+      "temperature_threshold": temperature_threshold
     })
   }
   
@@ -37,7 +50,7 @@ ruleset wovyn_base {
     select when wovyn new_temperature_reading
     pre {
       temperature = event:attr("temperature")
-      violation = temperature[0]["temperatureF"] > temperature_threshold
+      violation = temperature[0]["temperatureF"] > Profile:get_threshold()
     }
     send_directive("temp", {"temperature_violation": violation})
     always {
