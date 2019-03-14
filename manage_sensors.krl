@@ -60,6 +60,7 @@ ruleset manage_sensors {
         "section_id": section_id,
         "color": "rgb(46, 204, 113)",
         "rids": [
+          "io.picolabs.subscription",
           "temperature_store",
           "wovyn_base",
           "sensor_profile"
@@ -98,6 +99,30 @@ ruleset manage_sensors {
         "current_name": section_id
       }
     })
+    always {
+      raise wrangler event "subscription" attributes {
+        "name": section_id,
+        "Rx_role": "sensor",
+        "Tx_role": "controller",
+        "channel_type": "subscription",
+        "wellKnown_Tx": eci
+      }
+    }
+  }
+  
+  rule auto_accept {
+    select when wrangler inbound_pending_subscription_added
+    pre {
+      acceptable = check_roles();
+    }
+    if acceptable then noop();
+    fired {
+      raise wrangler event "pending_subscription_approval"
+        attributes event:attrs
+    } else {
+      raise wrangler event "inbound_rejection"
+        attributes { "Rx": event:attr("Rx") }
+    }
   }
   
   rule unneeded_sensor {
