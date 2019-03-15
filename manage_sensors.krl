@@ -1,11 +1,15 @@
 ruleset manage_sensors {
+  meta {
+    use module io.picolabs.subscription alias Subscriptions
+  }
+  
   global {
     nameFromId = function (id) {
       id + " Sensor Pico"
     }
     
     sensors = function () {
-      ent:sensors.defaultsTo([])
+      Subscriptions:established("Rx_role", "temperature_sensor").defaultsTo([])
     }
     
     sections = function () {
@@ -32,11 +36,11 @@ ruleset manage_sensors {
   rule full_test {
     select when manage full_test
     always {
-      raise sensor event "new_sensor" attributes { "section_id": "temperature" };
-      raise sensor event "new_sensor" attributes { "section_id": "light" };
-      raise sensor event "new_sensor" attributes { "section_id": "distance" };
+      raise sensor event "new_sensor" attributes { "section_id": "SWKT306" };
+      raise sensor event "new_sensor" attributes { "section_id": "MB105" };
+      raise sensor event "new_sensor" attributes { "section_id": "CB304" };
       raise sensor event "unneeded_sensor" attributes {
-        "section_id": "distance"
+        "section_id": "MB105"
       }
     }
   }
@@ -84,7 +88,7 @@ ruleset manage_sensors {
     }
   }
   
-  rule update_profile {
+  rule update_and_subscribe {
     select when wrangler new_child_created
     pre {
       eci = event:attr("eci")
@@ -102,7 +106,7 @@ ruleset manage_sensors {
     always {
       raise wrangler event "subscription" attributes {
         "name": section_id,
-        "Rx_role": "sensor",
+        "Rx_role": "temperature_sensor",
         "Tx_role": "controller",
         "channel_type": "subscription",
         "wellKnown_Tx": eci
@@ -110,19 +114,26 @@ ruleset manage_sensors {
     }
   }
   
-  rule auto_accept {
-    select when wrangler inbound_pending_subscription_added
+  rule introduce_sensor {
+    select when sensor introduce
     pre {
-      acceptable = check_roles();
+      parent = meta:eci
+      eci = event:attr("eci")
+      name = event:attr("name")
     }
-    if acceptable then noop();
-    fired {
-      raise wrangler event "pending_subscription_approval"
-        attributes event:attrs
-    } else {
-      raise wrangler event "inbound_rejection"
-        attributes { "Rx": event:attr("Rx") }
-    }
+    event:send({
+      "eci": parent,
+      "eid": "subcription",
+      "domain": "wrangler",
+      "type": "subscription",
+      "attrs": {
+        "name": name,
+        "Rx_role": "temperature_sensor",
+        "Tx_role": "controller",
+        "channel_type": "subcription",
+        "wellKnown_Tx": eci
+      }
+    })
   }
   
   rule unneeded_sensor {

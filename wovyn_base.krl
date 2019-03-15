@@ -9,6 +9,17 @@ ruleset wovyn_base {
     from = "+16122686674"
   }
   
+  rule auto_accept {
+    select when wrangler inbound_pending_subscription_added
+    pre {
+      attributes = event:attrs.klog("subcription :");
+    }
+    always {
+      raise wrangler event "pending_subscription_approval"
+          attributes attributes;
+    }
+  }
+  
   rule current_temperature {
     select when wovyn current_temperature
     pre {
