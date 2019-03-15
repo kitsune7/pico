@@ -5,7 +5,7 @@ ruleset manage_sensors {
   
   global {
     nameFromId = function (id) {
-      id + " Sensor Pico"
+      id + " sensor pico"
     }
     
     sensors = function () {

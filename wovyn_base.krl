@@ -2,6 +2,7 @@ ruleset wovyn_base {
   meta {
     use module temperature_store alias TS
     use module sensor_profile alias Profile
+    use module io.picolabs.subscription alias Subscriptions
   }
   
   global {
@@ -76,12 +77,16 @@ ruleset wovyn_base {
       temperature = event:attr("temperature")
       message = "Temperature threshold passed! Current temp: " + temperature[0]["temperatureF"]
     }
-    always {
-      raise twilio event "send_sms" attributes {
-        "to": to,
-        "from": from,
-        "message": message
-      }
-    }
+    foreach Subscriptions:established("Rx_role", "temperature_sensor").defaultsTo([])
+      setting (subscription)
+      event:send({
+        "eci": subcription{"Tx"},
+        "eid": "foxes",
+        "domain": "sensor",
+        "type": "threshold_violation",
+        "attrs": {
+          "message": message
+        }
+      })
   }
 }
