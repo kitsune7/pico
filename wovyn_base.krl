@@ -73,12 +73,11 @@ ruleset wovyn_base {
   
   rule threshold_notification {
     select when wovyn threshold_violation
-    pre {
-      temperature = event:attr("temperature")
-      message = "Temperature threshold passed! Current temp: " + temperature[0]["temperatureF"]
-    }
-    foreach Subscriptions:established("Rx_role", "temperature_sensor").defaultsTo([])
-      setting (subscription)
+    foreach Subscriptions:established("Rx_role", "temperature_sensor") setting (subscription)
+      pre {
+        temperature = event:attr("temperature")
+        message = "Temperature threshold passed! Current temp: " + temperature[0]["temperatureF"]
+      }
       event:send({
         "eci": subcription{"Tx"},
         "eid": "foxes",

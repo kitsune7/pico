@@ -7,7 +7,7 @@ ruleset management_profile {
   rule threshold_violation {
     select when sensor threshold_violation
     pre {
-      message: event:attr("message")
+      message = event:attr("message")
     }
     always {
       raise twilio event "send_sms" attributes {
