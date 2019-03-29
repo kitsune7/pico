@@ -15,13 +15,29 @@ ruleset manage_sensors {
     sections = function () {
       ent:sections.defaultsTo([])
     }
+    
+    reports = function () {
+      ent:reports.defaultsTo({})
+    }
+    
+    get_new_report_id = function () {
+      random:uuid()
+    }
+    
+    get_latest_reports = function () {
+      eids = ent:reports.keys().slice(4);
+      ent:reports.defaultsTo({}).keys().length() < 5 =>
+        ent:reports.defaultsTo({}) |
+        ent:reports.defaultsTo({}).filter(function (v, k) { eids.has(k) })
+    }
   }
   
   rule test_data {
     select when manage view_test_data
     send_directive("test values", {
       "sensors": sensors(),
-      "sections": sections()
+      "sections": sections(),
+      "reports": reports()
     })
   }
   
@@ -29,7 +45,15 @@ ruleset manage_sensors {
     select when manage clear_data
     always {
       clear ent:sensors;
-      clear ent:sections
+      clear ent:sections;
+      clear ent:reports
+    }
+  }
+  
+  rule clear_reports {
+    select when manage clear_reports
+    always {
+      clear ent:reports
     }
   }
   
@@ -42,6 +66,68 @@ ruleset manage_sensors {
       raise sensor event "unneeded_sensor" attributes {
         "section_id": "MB105"
       }
+    }
+  }
+  
+  rule get_latest_reports {
+    select when manage get_latest_reports
+    send_directive("reports", get_latest_reports())
+  }
+  
+  rule request_temperature_report {
+    select when sensor request_temperature_report
+    pre {
+      new_report_id = get_new_report_id()
+    }
+    always {
+      raise sensor event "send_temperature_report_requests" attributes {
+        "report_id": new_report_id
+      }
+    }
+  }
+  
+  rule send_temperature_report_requests {
+    select when sensor send_temperature_report_requests
+    foreach sensors() setting (sensor)
+    pre {
+      report_id = event:attr("report_id")
+      num_of_sensors = sensors().length()
+    }
+    event:send({
+      "eci": sensor{"Tx"},
+      "eid": report_id,
+      "domain": "sensor",
+      "type": "report_request",
+      "attrs": {
+        "sender_eci": meta:eci,
+        "report_id": report_id
+      }
+    })
+    fired {
+      ent:reports := ent:reports.defaultsTo({}).put(
+        [report_id, "temperature_sensors"],
+        num_of_sensors
+      )
+    }
+  }
+  
+  rule create_temperature_report {
+    select when sensor report
+    pre {
+      temperatures = event:attr("temperatures")
+      sender_eci = event:attr("sender_eci")
+      report_id = event:attr("report_id")
+    }
+    always {
+      ent:reports := ent:reports.defaultsTo({}).put(
+        [report_id, "temperatures"],
+        ent:reports.defaultsTo({}).get([report_id, "temperatures"])
+          .defaultsTo([]).union([temperatures])
+      );
+      ent:reports := ent:reports.defaultsTo({}).put(
+        [report_id, "responded"],
+        ent:reports.defaultsTo({}).get([report_id, "responded"]).defaultsTo(0) + 1
+      )
     }
   }
   

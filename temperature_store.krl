@@ -6,7 +6,7 @@ ruleset temperature_store {
   
   global {
     temperatures = function () {
-      ent:temperature_readings.reverse()
+      ent:temperature_readings.defaultsTo([]).reverse()
     }
     
     current_temperature = function () {
@@ -20,6 +20,26 @@ ruleset temperature_store {
     inrange_temperatures = function () {
       ent:temperature_readings.difference(ent:threshold_violations).reverse()
     }
+  }
+  
+  rule temperature_report {
+    select when sensor report_request
+    pre {
+      temperature_list = temperatures()
+      sender_eci = event:attr("sender_eci")
+      report_id = event:attr("report_id")
+    }
+    event:send({
+      "eci": sender_eci,
+      "eid": report_id,
+      "domain": "sensor",
+      "type": "report",
+      "attrs": {
+        "temperatures": temperature_list,
+        "sender_eci": meta:eci,
+        "report_id": report_id
+      }
+    })
   }
   
   rule collect_temperatures {
